@@ -19,6 +19,8 @@ from homeassistant.components.twilio.const import DOMAIN as TWILIO_DOMAIN
 from homeassistant.components.webhook import async_generate_url
 from homeassistant.helpers import entity_platform, service
 from homeassistant.helpers.selector import (
+    TargetSelector,
+    TargetSelectorConfig,
     BooleanSelector,
     BooleanSelectorConfig,
     DurationSelector,
@@ -93,7 +95,7 @@ async def async_setup_entry(
                 DurationSelectorConfig(enable_day=False, allow_negative=False)
             ),
         },
-        "initiate_call",
+        TwilioCallLiveNotificationService.initiate_call,
     )
 
 
