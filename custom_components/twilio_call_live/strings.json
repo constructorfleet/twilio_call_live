@@ -1,0 +1,73 @@
+{
+    "config": {
+        "step": {
+            "init": {
+                "title": "Twilio Live Call",
+                "description": "Configure live calling via Twilio.",
+                "data": {
+                    "from_number": "Call From:"
+                },
+                "data_description": {
+                    "from_number": "The phone number to initiate the call with."
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "menu": {
+                "title": "Twilio Live Call",
+                "description": "Configure events to be fired when phrases are detected."
+            },
+            "list_events": {
+                "title": "Events",
+                "description": "Events configured in the integration.",
+                "data": {
+                    "events": "Events:",
+                    "action": "Action:"
+                },
+                "data_description": {
+                    "events": "To edit or remove an event, select one of the events listed. To add a new event, use the 'Add Event' action."
+                }
+            },
+            "edit_event": {
+                "title": "Edit Event",
+                "description": "Configure the event that will be fired.",
+                "data": {
+                    "event": "Event:",
+                    "action": "Action:"
+                },
+                "data_description": {
+                    "event": "Event must be lowercase alphanumeric or '_' characters."
+                }
+            },
+            "list_phrases": {
+                "title": "Phrases",
+                "description": "Phrases configured that trigger this event.",
+                "data": {
+                    "phrases": "Phrases:",
+                    "action": "Action:"
+                },
+                "data_description": {
+                    "phrases": "To edit or remove a phrase, select one of the phrases listed. To add a new phrase, use the 'Add Phrase' action."
+                }
+            },
+            "edit_phrase": {
+                "title": "Edit Phrase",
+                "description": "Configure a short phrase to trigger the event",
+                "data": {
+                    "phrase": "Phrase:",
+                    "action": "Action:"
+                },
+                "data_description": {
+                    "phrase": "Phrase can be a simple string or a regular expression."
+                }
+            }
+        }
+    },
+    "exceptions": {
+        "send_message_timeout": {
+            "message": "Timeout initiating call with Twilio"
+        }
+    }
+}

@@ -1,0 +1,35 @@
+
+initiate_call:
+  fields:
+    message:
+      required: true
+      description: The location of the TwiML bin to run
+      example: https://bin.twilio/mytwiml.bin
+      selector:
+        text:
+          multiline: false
+          type: url
+          autocomplete: url
+          multiple: false
+    to_number:
+      required: true
+      example: +15551234567
+      description: The phone numbers to call
+      selector:
+        text:
+          multiple: true
+          type: tel
+          autocomplete: tel
+          multiline: false
+    process_live:
+      description: Whether to process live transactions
+      example: true
+      selector:
+        boolean:
+    hangup_after:
+      description: The maximum duration the call can be in-progress
+      example: 00:04:00
+      selector:
+        duration:
+          enable_day: false
+          allow_negative: false

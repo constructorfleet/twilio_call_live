@@ -10,9 +10,9 @@ from homeassistant.helpers.selector import (
     TextSelectorConfig,
     TextSelectorType,
     SelectSelector,
-     SelectSelectorConfig,
-     SelectSelectorMode,
-     SelectOptionDict,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+    SelectOptionDict,
 )
 from homeassistant.helpers import config_validation as cv
 from homeassistant.config_entries import (
@@ -24,7 +24,12 @@ from homeassistant.config_entries import (
 from homeassistant.const import CONF_EVENT
 import voluptuous as vol
 import json
-from custom_components.twilio_call_live.const import SYS_EVENT, SYS_EVENT_INDEX, SYS_PHRASE, SYS_PHRASE_INDEX
+from .const import (
+    SYS_EVENT,
+    SYS_EVENT_INDEX,
+    SYS_PHRASE,
+    SYS_PHRASE_INDEX,
+)
 
 from .config import EventPhrases, EventPhrasesList, SystemValues
 from .const import (
@@ -96,9 +101,8 @@ def _pop_sys_keys(user_input: dict[str, Any] | None) -> SystemValues:
         event_index=user_input.pop(SYS_EVENT_INDEX, None),
         phrase=user_input.pop(SYS_PHRASE, None),
         phrase_index=user_input.pop(SYS_PHRASE_INDEX, None),
-        user_input=user_input
+        user_input=user_input,
     )
-
 
 
 class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
@@ -158,7 +162,9 @@ class OptionsFlowHandler(OptionsFlowWithConfigEntry):
         super().__init__(config_entry)
         _LOGGER.info("Starting options flow")
         _LOGGER.info(json.dumps({"data": {k: v for k, v in config_entry.data.items()}}))
-        _LOGGER.info(json.dumps({"options": {k: v for k,v in config_entry.options.items()}}))
+        _LOGGER.info(
+            json.dumps({"options": {k: v for k, v in config_entry.options.items()}})
+        )
         self._event_phrases = EventPhrasesList(
             config_entry.options.get(CONF_PHRASE_EVENTS, [])
         )
@@ -171,7 +177,9 @@ class OptionsFlowHandler(OptionsFlowWithConfigEntry):
         _LOGGER.info("Step: user")
         return await self.async_step_init(user_input)
 
-    async def async_step_list_events(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+    async def async_step_list_events(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Handle listing events."""
         _LOGGER.info("Step: %s %s", STEP_LIST_EVENTS, json.dumps(user_input or "None"))
         _errors = {}
@@ -212,31 +220,37 @@ class OptionsFlowHandler(OptionsFlowWithConfigEntry):
 
         return self.async_show_form(
             step_id=STEP_LIST_EVENTS,
-            data_schema=vol.Schema({
-                vol.Optional(EVENTS_KEY): SelectSelector(
-                    SelectSelectorConfig(
-                        options=[
-                            SelectOptionDict(label=ep.event, value=str(idx)) # type: ignore
-                            for idx, ep
-                            in enumerate(self._event_phrases)], # type: ignore
-                        mode=SelectSelectorMode.LIST,
-                        multiple=False
-                    )
-                ),
-                vol.Required(CONF_ACTION): SelectSelector(
-                    SelectSelectorConfig(
-                        options=options,
-                        mode=SelectSelectorMode.LIST,
-                        multiple=False
-                    )
-                )
-            }),
-            errors=_errors
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(EVENTS_KEY): SelectSelector(
+                        SelectSelectorConfig(
+                            options=[
+                                SelectOptionDict(label=ep.event, value=str(idx))  # type: ignore
+                                for idx, ep in enumerate(self._event_phrases)
+                            ],  # type: ignore
+                            mode=SelectSelectorMode.LIST,
+                            multiple=False,
+                        )
+                    ),
+                    vol.Required(CONF_ACTION): SelectSelector(
+                        SelectSelectorConfig(
+                            options=options,
+                            mode=SelectSelectorMode.LIST,
+                            multiple=False,
+                        )
+                    ),
+                }
+            ),
+            errors=_errors,
         )
 
-    async def async_step_list_phrases(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+    async def async_step_list_phrases(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Handle listing phrases."""
-        _LOGGER.info("Step: %s, %s", STEP_LIST_PHRASES, json.dumps(user_input or "None"))
+        _LOGGER.info(
+            "Step: %s, %s", STEP_LIST_PHRASES, json.dumps(user_input or "None")
+        )
         if self.values.event_index is None:
             return await self.async_step_list_events()
         self.values.phrase = None
@@ -263,7 +277,9 @@ class OptionsFlowHandler(OptionsFlowWithConfigEntry):
                     _errors[PHRASES_KEY] = "no_event_selected"
                 else:
                     selected_index = int(selected_index)
-                    self.values.phrase = self._event_phrases[self.values.event_index].phrases[selected_index].pattern
+                    self.values.phrase = self._event_phrases[
+                        self.values.event_index
+                    ].get_pattern(selected_index)
                     self.values.phrase_index = selected_index
                     return await self.async_step_edit_phrase()
             elif action == ACTION_REMOVE:
@@ -289,29 +305,37 @@ class OptionsFlowHandler(OptionsFlowWithConfigEntry):
 
         return self.async_show_form(
             step_id=STEP_LIST_EVENTS,
-            data_schema=vol.Schema({
-                vol.Optional(PHRASES_KEY): SelectSelector(
-                    SelectSelectorConfig(
-                        options=[
-                            SelectOptionDict(label=phrase, value=str(idx)) # type: ignore
-                            for idx, phrase
-                            in enumerate(self._event_phrases[self.values.event_index].phrases)], # type: ignore
-                        mode=SelectSelectorMode.LIST,
-                        multiple=False
-                    )
-                ),
-                vol.Required(CONF_ACTION): SelectSelector(
-                    SelectSelectorConfig(
-                        options=options,
-                        mode=SelectSelectorMode.LIST,
-                        multiple=False
-                    )
-                )
-            }),
-            errors=_errors
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(PHRASES_KEY): SelectSelector(
+                        SelectSelectorConfig(
+                            options=[
+                                SelectOptionDict(label=phrase, value=str(idx))  # type: ignore
+                                for idx, phrase in enumerate(
+                                    self._event_phrases[
+                                        self.values.event_index
+                                    ].patterns
+                                )
+                            ],  # type: ignore
+                            mode=SelectSelectorMode.LIST,
+                            multiple=False,
+                        )
+                    ),
+                    vol.Required(CONF_ACTION): SelectSelector(
+                        SelectSelectorConfig(
+                            options=options,
+                            mode=SelectSelectorMode.LIST,
+                            multiple=False,
+                        )
+                    ),
+                }
+            ),
+            errors=_errors,
         )
 
-    async def async_step_edit_event(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+    async def async_step_edit_event(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         step_id = STEP_EDIT_EVENT
         _LOGGER.info("Step: %s", step_id)
         self.values.phrase = None
@@ -330,16 +354,24 @@ class OptionsFlowHandler(OptionsFlowWithConfigEntry):
             else:
                 try:
                     if self.values.event_index is None:
-                        self._event_phrases.append(EventPhrases(event=event, phrases=[]))
+                        self._event_phrases.append(
+                            EventPhrases(event=event, phrases=[])
+                        )
                         self.values.event = event
                         self.values.event_index = len(self._event_phrases) - 1
                     else:
                         self._event_phrases[self.values.event_index].event = event
                         self.values.event = event
                     _LOGGER.info(
-                        "Edit EventPhrase: event %s, phrases %s",
-                        event,
-                        [ep for ep in self._event_phrases[self.values.event_index or -1].phrases]
+                        "Edit EventPhrase: event %s, %d, phrases %s",
+                        self.values.event,
+                        self.values.event_index,
+                        [
+                            ep
+                            for ep in self._event_phrases[
+                                self.values.event_index or -1
+                            ].phrases
+                        ],
                     )
                     if action == ACTION_ADD:
                         self.values.event = None
@@ -357,32 +389,40 @@ class OptionsFlowHandler(OptionsFlowWithConfigEntry):
         return self.async_show_form(
             step_id=step_id,
             data_schema=self.add_suggested_values_to_schema(
-                vol.Schema({
-                    vol.Required(CONF_EVENT): TextSelector(
-                        TextSelectorConfig(type=TextSelectorType.TEXT, multiline=False)
-                    ),
-                    vol.Required(CONF_ACTION): SelectSelector(
-                        SelectSelectorConfig(
-                            options=[
-                                SelectOptionDict(label="Add Another", value=ACTION_ADD),
-                                SelectOptionDict(label="Save & Open Phrases", value=ACTION_SAVE),
-                                SelectOptionDict(label="Back", value=ACTION_BACK),
-                                SelectOptionDict(label="Menu", value=ACTION_MENU)
-                            ],
-                            mode=SelectSelectorMode.LIST,
-                            multiple=False,
-                            custom_value=False
-                        )
-                    )
-                }),
-                {
-                    CONF_EVENT: (user_input or {}).get(CONF_EVENT, self.values.event)
-                },
+                vol.Schema(
+                    {
+                        vol.Required(CONF_EVENT): TextSelector(
+                            TextSelectorConfig(
+                                type=TextSelectorType.TEXT, multiline=False
+                            )
+                        ),
+                        vol.Required(CONF_ACTION): SelectSelector(
+                            SelectSelectorConfig(
+                                options=[
+                                    SelectOptionDict(
+                                        label="Add Another", value=ACTION_ADD
+                                    ),
+                                    SelectOptionDict(
+                                        label="Save & Open Phrases", value=ACTION_SAVE
+                                    ),
+                                    SelectOptionDict(label="Back", value=ACTION_BACK),
+                                    SelectOptionDict(label="Menu", value=ACTION_MENU),
+                                ],
+                                mode=SelectSelectorMode.LIST,
+                                multiple=False,
+                                custom_value=False,
+                            )
+                        ),
+                    }
+                ),
+                {CONF_EVENT: (user_input or {}).get(CONF_EVENT, self.values.event)},
             ),
-            errors=_errors
+            errors=_errors,
         )
 
-    async def async_step_edit_phrase(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+    async def async_step_edit_phrase(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         step_id = STEP_EDIT_PHRASE
         _LOGGER.info("Step: %s", step_id)
         _errors = {}
@@ -400,11 +440,18 @@ class OptionsFlowHandler(OptionsFlowWithConfigEntry):
             else:
                 try:
                     if self.values.phrase_index is None:
-                        self._event_phrases[self.values.event_index or -1].phrases.append(phrase)
+                        self._event_phrases[
+                            self.values.event_index or -1
+                        ].phrases.append(phrase)
                         self.values.phrase = phrase
-                        self.values.phrase_index = len(self._event_phrases[self.values.event_index or - 1].phrases or [])
+                        self.values.phrase_index = len(
+                            self._event_phrases[self.values.event_index or -1].phrases
+                            or []
+                        )
                     else:
-                        self._event_phrases[self.values.event_index or -1].phrases[self.values.phrase_index] = phrase
+                        self._event_phrases[self.values.event_index or -1].phrases[
+                            self.values.phrase_index
+                        ] = phrase
                         self.values.phrase = phrase
                     _LOGGER.info(
                         "Edit Phrase: event %s, phrase %s",
@@ -424,29 +471,37 @@ class OptionsFlowHandler(OptionsFlowWithConfigEntry):
         return self.async_show_form(
             step_id=step_id,
             data_schema=self.add_suggested_values_to_schema(
-                vol.Schema({
-                    vol.Required(CONF_PHRASE): TextSelector(
-                        TextSelectorConfig(type=TextSelectorType.TEXT, multiline=False)
-                    ),
-                    vol.Required(CONF_ACTION): SelectSelector(
-                        SelectSelectorConfig(
-                            options=[
-                                SelectOptionDict(label="Add Another", value=ACTION_ADD),
-                                SelectOptionDict(label="Save & Open Event", value=ACTION_SAVE),
-                                SelectOptionDict(label="Cancel Changes", value=ACTION_CANCEL),
-                                SelectOptionDict(label="Menu", value=ACTION_MENU)
-                            ],
-                            mode=SelectSelectorMode.LIST,
-                            multiple=False,
-                            custom_value=False
-                        )
-                    )
-                }),
-                {
-                    CONF_PHRASE: (user_input or {}).get(CONF_PHRASE, self.values.phrase)
-                },
+                vol.Schema(
+                    {
+                        vol.Required(CONF_PHRASE): TextSelector(
+                            TextSelectorConfig(
+                                type=TextSelectorType.TEXT, multiline=False
+                            )
+                        ),
+                        vol.Required(CONF_ACTION): SelectSelector(
+                            SelectSelectorConfig(
+                                options=[
+                                    SelectOptionDict(
+                                        label="Add Another", value=ACTION_ADD
+                                    ),
+                                    SelectOptionDict(
+                                        label="Save & Open Event", value=ACTION_SAVE
+                                    ),
+                                    SelectOptionDict(
+                                        label="Cancel Changes", value=ACTION_CANCEL
+                                    ),
+                                    SelectOptionDict(label="Menu", value=ACTION_MENU),
+                                ],
+                                mode=SelectSelectorMode.LIST,
+                                multiple=False,
+                                custom_value=False,
+                            )
+                        ),
+                    }
+                ),
+                {CONF_PHRASE: (user_input or {}).get(CONF_PHRASE, self.values.phrase)},
             ),
-            errors=_errors
+            errors=_errors,
         )
 
     async def async_step_init(
@@ -467,63 +522,24 @@ class OptionsFlowHandler(OptionsFlowWithConfigEntry):
             menu_options={
                 STEP_LIST_EVENTS: "Edit Events",
                 STEP_SAVE: "Save Changes and Close",
-                STEP_EXIT: "Close Without Save"
-            })
+                STEP_EXIT: "Close Without Save",
+            },
+        )
 
     async def async_step_save(
-            self, user_input: dict[str, Any] | None = None
+        self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Save and close the config flow."""
         return self.async_create_entry(
             title=DOMAIN,
             data={
                 **self.config_entry.data,
-                CONF_PHRASE_EVENTS: [
-                    event.to_dict()
-                    for event
-                    in self._event_phrases
-                ]
-            }
+                CONF_PHRASE_EVENTS: [event.to_dict() for event in self._event_phrases],
+            },
         )
 
     async def async_step_exit(
-            self, user_input: dict[str, Any] | None = None
+        self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Exit without saving."""
         return self.async_abort(reason="user_aborted")
-
-
-def validate_options(options: dict[str, Any]) -> dict[str, Any]:
-    """Validate options."""
-    _errors = {}
-    if CONF_PHRASE_EVENTS not in options:
-        return {}
-
-    phrase_events = options.get(CONF_PHRASE_EVENTS)
-    if not isinstance(phrase_events, list):
-        return {CONF_PHRASE_EVENTS: "expected_phrase_event_list"}
-
-    for idx, phrase_event in enumerate(phrase_events):
-        if CONF_PHRASES not in phrase_event:
-            _errors[f"{CONF_PHRASE_EVENTS}[{idx}]"] = "missing_phrases"
-        else:
-            phrases = phrase_event.get(CONF_PHRASES)
-            if not isinstance(phrases, list):
-                _errors[f"{CONF_PHRASE_EVENTS}[{idx}]"] = "expected_phrase_list"
-            else:
-                for phrase in phrases:
-                    if not isinstance(phrase, str):
-                        _errors[f"{CONF_PHRASE_EVENTS}[{idx}]"] = (
-                            "expected_phrase_string"
-                        )
-
-        if CONF_EVENT not in phrase_event:
-            _errors[f"{CONF_PHRASE_EVENTS}[{idx}]"] = "missing_event"
-        else:
-            event = phrase_event.get(CONF_EVENT)
-            try:
-                event = cv.slug(event)
-            except vol.Invalid:
-                _errors[f"{CONF_PHRASE_EVENTS}[{idx}]"] = "invalid_event"
-
-    return _errors

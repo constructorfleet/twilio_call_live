@@ -1,20 +1,25 @@
 """Defines a structure mapping phrases to an event."""
+
 from dataclasses import dataclass, field
 import re
-from typing import Any, TypedDict
+from typing import Any, cast
 from homeassistant.const import CONF_EVENT
-from custom_components.twilio_call_live.const import CONF_PHRASES, SYS_EVENT_INDEX, SYS_PHRASE
-from custom_components.twilio_call_live.const import SYS_EVENT
+from custom_components.twilio_call_live.const import (
+    CONF_PHRASES,
+    SYS_EVENT_INDEX,
+    SYS_PHRASE,
+    SYS_EVENT,
+)
 
 TEXT_REPLACE_PATTERN = re.compile(r"[^a-zA-Z0-9 -]")
 
 
 @dataclass()
-class EventPhrases():
+class EventPhrases:
     """Maps phrases to an event."""
 
     event: str
-    phrases: list[re.Pattern]
+    phrases: list[re.Pattern | str]
 
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> "EventPhrases":
@@ -24,12 +29,31 @@ class EventPhrases():
             phrases=[re.compile(phrase, re.IGNORECASE) for phrase in config["phrases"]],
         )
 
+    @property
+    def phrases_string(self) -> str:
+        """Get the phrases as a stirng."""
+        return "|".join(self.patterns)
+
+    @property
+    def patterns(self) -> list[str]:
+        """Get patterns or raw string."""
+        return [p.pattern if isinstance(p, re.Pattern) else p for p in self.phrases]
+
+    def get_pattern(self, index: int) -> str:
+        """Get pattern or raw string."""
+        if isinstance(self.phrases[index], re.Pattern):
+            return cast(re.Pattern, self.phrases[index]).pattern
+        return cast(str, self.phrases[index])
+
     def is_match(self, text: str) -> bool:
         """Determine if any of the phrases match the text."""
         clean_text = re.sub(TEXT_REPLACE_PATTERN, "", text)
         for phrase in self.phrases:
-            if phrase.search(clean_text):
+            if isinstance(phrase, re.Pattern) and phrase.search(clean_text):
                 return True
+            elif isinstance(phrase, str) and phrase in clean_text:
+                return True
+
         return False
 
     def add_phrase(self, phrase: str) -> "EventPhrases":
@@ -48,8 +72,12 @@ class EventPhrases():
             self.phrases.remove(self.phrases[phrase_or_index])
         else:
             self.phrases = [
-                phrase for phrase in self.phrases
-                if phrase.pattern != phrase_or_index
+                phrase
+                for phrase in self.phrases
+                if (
+                    isinstance(phrase, re.Pattern) and phrase.pattern != phrase_or_index
+                )
+                or phrase != phrase_or_index
             ]
         return self
 
@@ -57,22 +85,35 @@ class EventPhrases():
         """Return dict of this structure."""
         return {
             CONF_EVENT: self.event,
-            CONF_PHRASES: [phrase.pattern if isinstance(phrase, re.Pattern) else phrase for phrase in self.phrases]
+            CONF_PHRASES: [
+                phrase.pattern if isinstance(phrase, re.Pattern) else phrase
+                for phrase in self.phrases
+            ],
         }
-
 
 
 class EventPhrasesList(list[EventPhrases]):
     """Stores EventPhrases elements.."""
 
-    def __init__(self, event_phrases: list[EventPhrases | dict[str, Any]]) -> None:
+    def __init__(
+        self,
+        event_phrases: (
+            list[EventPhrases | dict[str, Any]]
+            | list[EventPhrases]
+            | list[dict[str, Any]]
+        ),
+    ) -> None:
         """Initialize a new instance."""
-        super().__init__([
-            EventPhrases.from_config(event_phrase)
-            if isinstance(event_phrase, dict)
-            else event_phrase
-            for event_phrase in event_phrases
-        ])
+        super().__init__(
+            [
+                (
+                    EventPhrases.from_config(event_phrase)
+                    if isinstance(event_phrase, dict)
+                    else event_phrase
+                )
+                for event_phrase in event_phrases
+            ]
+        )
 
     def get(self, text: str) -> str | None:
         """Returns the event for the given text."""
@@ -92,12 +133,18 @@ class SystemValues:
 
     def to_dict(self) -> dict[str, Any] | None:
         """Convert to dictionary."""
-        if self.event is None and self.event_index is None and self.phrase is None and self.phrase_index is None and self.user_input is None:
+        if (
+            self.event is None
+            and self.event_index is None
+            and self.phrase is None
+            and self.phrase_index is None
+            and self.user_input is None
+        ):
             return None
         return {
             SYS_EVENT: self.event,
             SYS_EVENT_INDEX: self.event_index,
             SYS_PHRASE: self.phrase,
             SYS_EVENT_INDEX: self.phrase_index,
-            **(self.user_input or {})
+            **(self.user_input or {}),
         }
