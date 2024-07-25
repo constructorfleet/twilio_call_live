@@ -1,5 +1,6 @@
 """Support for twilio_call_live notify."""
 
+from datetime import timedelta
 import voluptuous as vol
 from typing import Any, override
 import logging
@@ -74,7 +75,10 @@ async def async_setup_entry(
         {
             vol.Required("to_number"): TextSelector(
                 TextSelectorConfig(
-                    multiline=False, type=TextSelectorType.TEL, autocomplete="tel"
+                    multiline=False,
+                    type=TextSelectorType.TEL,
+                    autocomplete="tel",
+                    multiple=True,
                 )
             ),
             vol.Required("message"): TextSelector(
@@ -89,7 +93,7 @@ async def async_setup_entry(
                 DurationSelectorConfig(enable_day=False, allow_negative=False)
             ),
         },
-        "send_message",
+        "initiate_call",
     )
 
 
@@ -121,13 +125,14 @@ class TwilioCallLiveNotificationService(NotifyEntity, BaseNotificationService):
             await call.hangup()
         return await super().async_will_remove_from_hass()
 
-    async def async_send_message(
+    async def initiate_call(
         self,
         message: str,
-        data: dict[str, Any] | None = None,
-        targets: list[str] | str | None = None,
-        **kwargs: Any,
+        to_number: str | list[str],
+        process_live: bool = False,
+        hangup_after: timedelta | None = None,
     ) -> None:
+        """Initiate a phone call."""
         from_number = self._config.options.get(CONF_FROM_NUMBER)
         if not from_number:
             _LOGGER.warn("Twilio must be configured with a `from` number")
@@ -143,8 +148,8 @@ class TwilioCallLiveNotificationService(NotifyEntity, BaseNotificationService):
             webhook_url = async_generate_url(
                 self.hass, webhook_id=webhook_id, allow_external=True
             )
-        targets = targets or kwargs.get("to_number", None)
-        if not targets:
+
+        if not to_number:
             _LOGGER.info("At least 1 target is required")
             return
 
@@ -154,13 +159,7 @@ class TwilioCallLiveNotificationService(NotifyEntity, BaseNotificationService):
             twimlet_url = "http://twimlets.com/message?Message="
             twimlet_url += parse_url.quote(message, safe="")
 
-        process_live = (
-            data or {ATTR_PROCESS_LIVE: kwargs.get(ATTR_PROCESS_LIVE, None)}
-        ).get(ATTR_PROCESS_LIVE, True)
-        hangup_after = (
-            data or {ATTR_HANGUP_AFTER: kwargs.get(ATTR_HANGUP_AFTER, None)}
-        ).get(ATTR_HANGUP_AFTER, None)
-        for target in targets if isinstance(targets, list) else [targets]:
+        for target in [to_number] if isinstance(to_number, str) else to_number:
             try:
                 call = call = TwilioCall(
                     self.hass,
@@ -185,3 +184,18 @@ class TwilioCallLiveNotificationService(NotifyEntity, BaseNotificationService):
 
             except TwilioRestException as exc:
                 _LOGGER.error(exc)
+
+    async def async_send_message(
+        self,
+        message: str,
+        data: dict[str, Any] | None = None,
+        targets: list[str] | str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Send message."""
+        await self.initiate_call(
+            message,
+            to_number=targets,
+            process_live=data.get(ATTR_PROCESS_LIVE, False),
+            hangup_after=data.get(ATTR_HANGUP_AFTER, None),
+        )

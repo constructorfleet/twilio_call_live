@@ -262,8 +262,6 @@ class OptionsFlowHandler(OptionsFlowWithConfigEntry):
 
             if action is None or action == ACTION_MENU:
                 return await self.async_step_menu()
-            elif action == ACTION_BACK:
-                return await self.async_step_edit_event()
             elif action == ACTION_EVENTS:
                 self.values.event = None
                 self.values.event_index = None
@@ -271,10 +269,10 @@ class OptionsFlowHandler(OptionsFlowWithConfigEntry):
             elif action == ACTION_ADD:
                 return await self.async_step_edit_phrase()
             elif action == ACTION_BACK:
-                return await self.async_step_list_events()
+                return await self.async_step_edit_event()()
             elif action == ACTION_EDIT:
                 if selected_index is None:
-                    _errors[PHRASES_KEY] = "no_event_selected"
+                    _errors[PHRASES_KEY] = "no_phrase_selected"
                 else:
                     selected_index = int(selected_index)
                     self.values.phrase = self._event_phrases[
@@ -284,17 +282,15 @@ class OptionsFlowHandler(OptionsFlowWithConfigEntry):
                     return await self.async_step_edit_phrase()
             elif action == ACTION_REMOVE:
                 if selected_index is None:
-                    _errors[PHRASES_KEY] = "no_event_selected"
+                    _errors[PHRASES_KEY] = "no_phrase_selected"
                 else:
                     selected_index = int(selected_index)
-                    self._event_phrases.remove(self._event_phrases[selected_index])
-                    if len(self._event_phrases) == 0:
-                        self.values = SystemValues()
-                        return await self.async_step_list_events()
-                    else:
-                        self.values.phrase = None
-                        self.values.phrase_index = None
-                        return await self.async_step_list_phrases()
+                    self._event_phrases[self.values.event_index].phrases.remove(
+                        self._event_phrases[self.values.event_index].phrases[
+                            selected_index
+                        ]
+                    )
+                    return await self.async_step_list_phrases()
         options = []
         options.append(SelectOptionDict(label="Add Phrase", value=ACTION_ADD))
         options.append(SelectOptionDict(label="Edit Phrase", value=ACTION_EDIT))
@@ -347,7 +343,6 @@ class OptionsFlowHandler(OptionsFlowWithConfigEntry):
             if action is None or action == ACTION_MENU:
                 return await self.async_step_menu()
             elif action == ACTION_BACK:
-                self.values = SystemValues()
                 return await self.async_step_list_events()
             if event is None:
                 _errors[CONF_EVENT] = "missing_event"
@@ -373,15 +368,7 @@ class OptionsFlowHandler(OptionsFlowWithConfigEntry):
                             ].phrases
                         ],
                     )
-                    if action == ACTION_ADD:
-                        self.values.event = None
-                        self.values.event_index = None
-                        _LOGGER.info("Added, opening another event")
-                        return await self.async_step_edit_event()
-                    elif len(self._event_phrases[self.values.event_index].phrases) > 0:
-                        return await self.async_step_list_phrases()
-                    else:
-                        return await self.async_step_edit_phrase()
+                    return await self.async_step_list_phrases()
                 except Exception as err:
                     _LOGGER.error("Unexpected error parsing event: %s", err)
                     _errors[CONF_EVENT] = "invalid_event"
@@ -400,12 +387,11 @@ class OptionsFlowHandler(OptionsFlowWithConfigEntry):
                             SelectSelectorConfig(
                                 options=[
                                     SelectOptionDict(
-                                        label="Add Another", value=ACTION_ADD
-                                    ),
-                                    SelectOptionDict(
                                         label="Save & Open Phrases", value=ACTION_SAVE
                                     ),
-                                    SelectOptionDict(label="Back", value=ACTION_BACK),
+                                    SelectOptionDict(
+                                        label="Back to Events", value=ACTION_BACK
+                                    ),
                                     SelectOptionDict(label="Menu", value=ACTION_MENU),
                                 ],
                                 mode=SelectSelectorMode.LIST,
@@ -431,7 +417,7 @@ class OptionsFlowHandler(OptionsFlowWithConfigEntry):
             phrase = user_input.pop(CONF_PHRASE, None)
             if action is None or action == ACTION_MENU:
                 return await self.async_step_menu()
-            elif action == ACTION_CANCEL:
+            elif action == ACTION_BACK:
                 self.values.phrase = None
                 self.values.phrase_index = None
                 return await self.async_step_list_phrases()
@@ -460,10 +446,7 @@ class OptionsFlowHandler(OptionsFlowWithConfigEntry):
                     )
                     self.values.phrase = None
                     self.values.phrase_index = None
-                    if action == ACTION_ADD:
-                        return await self.async_step_edit_phrase()
-                    else:
-                        return await self.async_step_edit_event()
+                    return await self.async_step_list_phrases()
                 except Exception as err:
                     _LOGGER.error("Unexpected error parsing phrase: %s", err)
                     _errors[CONF_PHRASE] = "invalid_phrase"
@@ -481,14 +464,9 @@ class OptionsFlowHandler(OptionsFlowWithConfigEntry):
                         vol.Required(CONF_ACTION): SelectSelector(
                             SelectSelectorConfig(
                                 options=[
+                                    SelectOptionDict(label="Save", value=ACTION_SAVE),
                                     SelectOptionDict(
-                                        label="Add Another", value=ACTION_ADD
-                                    ),
-                                    SelectOptionDict(
-                                        label="Save & Open Event", value=ACTION_SAVE
-                                    ),
-                                    SelectOptionDict(
-                                        label="Cancel Changes", value=ACTION_CANCEL
+                                        label="Back to Phrases", value=ACTION_BACK
                                     ),
                                     SelectOptionDict(label="Menu", value=ACTION_MENU),
                                 ],

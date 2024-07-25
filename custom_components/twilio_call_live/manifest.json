@@ -1,12 +1,13 @@
 {
   "domain": "twilio_call_live",
-  "name": "Twilio Call Live",
+  "name": "Twilio Call Live Transcriptions",
   "codeowners": [
     "@teagan42",
     "constructorfleet/prostetnic"
   ],
   "config_flow": true,
   "documentation": "https://github.com/constructorfleet/twilio_call_live",
+  "issue_tracker": "https://github.com/constructorfleet/twilio_call_live/issues",
   "iot_class": "cloud_push",
   "loggers": [
     "twilio_call_live"
@@ -14,10 +15,14 @@
   "dependencies": [
     "twilio"
   ],
+  "integration_type": "service",
   "requirements": [
     "twilio==9.2.3",
     "python-Levenshtein==0.25.1",
     "jellyfish==1.0.4"
+  ],
+  "integrations": [
+    "twilio"
   ],
   "single_config_entry": true,
   "version": "0.0.1"
