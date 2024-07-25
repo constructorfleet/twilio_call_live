@@ -1,5 +1,9 @@
 
 initiate_call:
+  target:
+    entity:
+      domain: notify
+      integration: twilio_call_live
   fields:
     message:
       required: true
@@ -24,6 +28,7 @@ initiate_call:
     process_live:
       description: Whether to process live transactions
       example: true
+      default: false
       selector:
         boolean:
     hangup_after:
