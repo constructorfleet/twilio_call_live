@@ -1,4 +1,4 @@
-homeassistant==2024.7.0
+homeassistant==2025.10.2
 pip>=21.3.1
 twilio==9.2.3
 voluptuous
